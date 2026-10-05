@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:apikit-soap="http://www.mulesoft.org/schema/mule/apikit-soap" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:bti="http://www.mulesoft.org/schema/mule/ee/bti" xmlns:cluster="http://www.mulesoft.org/schema/mule/ee/cluster" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:http-policy="http://www.mulesoft.org/schema/mule/mule-http" xmlns:kryo="http://www.mulesoft.org/schema/mule/kryo" xmlns:module="http://www.mulesoft.org/schema/mule/module" xmlns:sockets="http://www.mulesoft.org/schema/mule/sockets" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/apikit-soap http://www.mulesoft.org/schema/mule/apikit-soap/current/mule-apikit-soap.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+    
+    <!-- -->
+	<api-gateway:autodiscovery apiId="${api.id}"
+                           ignoreBasePath="true"
+                           flowRef="api-main"
+                           doc:name="API Autodiscovery"/> 
+    
+    <apikit-soap:config httpStatusVarName="httpStatus" name="soapkit-config" port="BankingExperiencePort" service="BankingExperienceAPIService" wsdlLocation="banking-experience-mobile-api.wsdl"/>
+    <flow name="api-main">
+        <http:listener config-ref="HTTP_Listener_config" path="/BankingExperienceAPIService/BankingExperiencePort">
+            <http:response statusCode="#[attributes.additionalTransportData.statusCode default 200]">
+                <http:headers><![CDATA[#[attributes.protocolHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[attributes.additionalTransportData.statusCode default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[attributes.protocolHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit-soap:router config-ref="soapkit-config">
+            <apikit-soap:attributes>#[%dw 2.0
+              output application/java
+              ---
+              {
+                  headers: attributes.headers,
+                  method: attributes.method,
+                  queryString: attributes.queryString
+            }]</apikit-soap:attributes>
+        </apikit-soap:router>
+		<error-handler ref="global-experience-error-handler" />
+    </flow>
+    <flow name="viewDashboard:\soapkit-config">
+        <flow-ref doc:id="f4e4a971-cf06-4af2-9f7c-3eb1390eff2e" doc:name="viewDashboard" name="viewDashboard-impl"/>
+        <error-handler ref="global-experience-error-handler"/>
+    </flow>
+    <flow name="makeTransfer:\soapkit-config">
+        <flow-ref doc:id="9e0051f9-ebdd-459a-92e1-bec86408922e" doc:name="makeTransfer" name="makeTransfer-impl"/>
+        <error-handler ref="global-experience-error-handler"/>
+    </flow>
+    <flow name="viewStatement:\soapkit-config">
+        <flow-ref doc:id="9ef58ad8-b1c8-493c-a675-d2ad3df0e60a" doc:name="viewStatement" name="viewStatement-impl"/>
+        <error-handler ref="global-experience-error-handler"/>
+    </flow>
+    <flow name="viewSpendingInsights:\soapkit-config">
+        <flow-ref doc:id="eb6f5b40-fd69-468c-be38-727bdf1138fe" doc:name="viewSpendingInsights" name="viewSpendingInsights-impl"/>
+    </flow>
+    <flow name="blockOrUnblockCard:\soapkit-config">
+        <flow-ref doc:id="b035bbd0-72f7-4e8e-b1f4-c987403a8622" doc:name="blockOrUnblockCard" name="blockOrUnblockCard-impl"/>
+        <error-handler ref="global-experience-error-handler"/>
+    </flow>
+</mule>

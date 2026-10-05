@@ -1,0 +1,166 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<definitions name="BankingExperienceAPI"
+             targetNamespace="http://standardbank.ao/mobilebanking/experience/1.0"
+             xmlns:tns="http://standardbank.ao/mobilebanking/experience/1.0"
+             xmlns:common="http://standardbank.ao/common/types/1.0"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns="http://schemas.xmlsoap.org/wsdl/">
+
+    <!-- =========================================================
+         TYPES - Esquema XSD com os elementos usados nas mensagens
+         Os tipos compartilhados (enums e structs comuns) vêm do
+         common-types.xsd. Aqui ficam só os elementos exclusivos
+         desta API (request/response de cada operação).
+         ========================================================= -->
+    <types>
+        <xsd:schema targetNamespace="http://standardbank.ao/mobilebanking/experience/1.0"
+                    xmlns:tns="http://standardbank.ao/mobilebanking/experience/1.0"
+                    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                    elementFormDefault="qualified">
+
+            <!-- Mesmo namespace do próprio WSDL -> usa xsd:include (não xsd:import).
+                 Este arquivo externo já cuida, internamente, de importar o
+                 common-types.xsd (RiskFlag, CardAction, AccountSummary, etc.) -->
+            <xsd:include schemaLocation="mobile-experience-types.xsd"/>
+
+        </xsd:schema>
+    </types>
+
+    <!-- =========================================================
+         MESSAGES
+         ========================================================= -->
+    <message name="viewDashboardRequestMessage">
+        <part name="parameters" element="tns:viewDashboardRequest"/>
+    </message>
+    <message name="viewDashboardResponseMessage">
+        <part name="parameters" element="tns:viewDashboardResponse"/>
+    </message>
+
+    <message name="makeTransferRequestMessage">
+        <part name="parameters" element="tns:makeTransferRequest"/>
+    </message>
+    <message name="makeTransferResponseMessage">
+        <part name="parameters" element="tns:makeTransferResponse"/>
+    </message>
+
+    <message name="viewStatementRequestMessage">
+        <part name="parameters" element="tns:viewStatementRequest"/>
+    </message>
+    <message name="viewStatementResponseMessage">
+        <part name="parameters" element="tns:viewStatementResponse"/>
+    </message>
+
+    <message name="viewSpendingInsightsRequestMessage">
+        <part name="parameters" element="tns:viewSpendingInsightsRequest"/>
+    </message>
+    <message name="viewSpendingInsightsResponseMessage">
+        <part name="parameters" element="tns:viewSpendingInsightsResponse"/>
+    </message>
+
+    <message name="blockOrUnblockCardRequestMessage">
+        <part name="parameters" element="tns:blockOrUnblockCardRequest"/>
+    </message>
+    <message name="blockOrUnblockCardResponseMessage">
+        <part name="parameters" element="tns:blockOrUnblockCardResponse"/>
+    </message>
+
+    <!-- Referencia o Fault que agora vive no namespace comum -->
+    <message name="ExperienceFaultMessage">
+        <part name="fault" element="common:ExperienceFault"/>
+    </message>
+
+    <!-- =========================================================
+         PORT TYPE - Operações disponíveis no Experience API
+         ========================================================= -->
+    <portType name="BankingExperiencePortType">
+
+        <operation name="viewDashboard">
+            <input message="tns:viewDashboardRequestMessage"/>
+            <output message="tns:viewDashboardResponseMessage"/>
+            <fault name="ExperienceFault" message="tns:ExperienceFaultMessage"/>
+        </operation>
+
+        <operation name="makeTransfer">
+            <input message="tns:makeTransferRequestMessage"/>
+            <output message="tns:makeTransferResponseMessage"/>
+            <fault name="ExperienceFault" message="tns:ExperienceFaultMessage"/>
+        </operation>
+
+        <operation name="viewStatement">
+            <input message="tns:viewStatementRequestMessage"/>
+            <output message="tns:viewStatementResponseMessage"/>
+            <fault name="ExperienceFault" message="tns:ExperienceFaultMessage"/>
+        </operation>
+
+        <operation name="viewSpendingInsights">
+            <input message="tns:viewSpendingInsightsRequestMessage"/>
+            <output message="tns:viewSpendingInsightsResponseMessage"/>
+            <fault name="ExperienceFault" message="tns:ExperienceFaultMessage"/>
+        </operation>
+
+        <operation name="blockOrUnblockCard">
+            <input message="tns:blockOrUnblockCardRequestMessage"/>
+            <output message="tns:blockOrUnblockCardResponseMessage"/>
+            <fault name="ExperienceFault" message="tns:ExperienceFaultMessage"/>
+        </operation>
+
+    </portType>
+
+    <!-- =========================================================
+         BINDING - document/literal (padrão recomendado)
+         Nota: a referência ao Fault no <soap:fault name="..."> precisa
+         bater com o "name" declarado na operation do portType acima
+         (ExperienceFault), não com o namespace do elemento.
+         ========================================================= -->
+    <binding name="BankingExperienceSoapBinding" type="tns:BankingExperiencePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+
+        <operation name="viewDashboard">
+            <soap:operation soapAction="http://standardbank.ao/mobilebanking/experience/1.0/viewDashboard"/>
+            <input><soap:body use="literal"/></input>
+            <output><soap:body use="literal"/></output>
+            <fault name="ExperienceFault"><soap:fault name="ExperienceFault" use="literal"/></fault>
+        </operation>
+
+        <operation name="makeTransfer">
+            <soap:operation soapAction="http://standardbank.ao/mobilebanking/experience/1.0/makeTransfer"/>
+            <input><soap:body use="literal"/></input>
+            <output><soap:body use="literal"/></output>
+            <fault name="ExperienceFault"><soap:fault name="ExperienceFault" use="literal"/></fault>
+        </operation>
+
+        <operation name="viewStatement">
+            <soap:operation soapAction="http://standardbank.ao/mobilebanking/experience/1.0/viewStatement"/>
+            <input><soap:body use="literal"/></input>
+            <output><soap:body use="literal"/></output>
+            <fault name="ExperienceFault"><soap:fault name="ExperienceFault" use="literal"/></fault>
+        </operation>
+
+        <operation name="viewSpendingInsights">
+            <soap:operation soapAction="http://standardbank.ao/mobilebanking/experience/1.0/viewSpendingInsights"/>
+            <input><soap:body use="literal"/></input>
+            <output><soap:body use="literal"/></output>
+            <fault name="ExperienceFault"><soap:fault name="ExperienceFault" use="literal"/></fault>
+        </operation>
+
+        <operation name="blockOrUnblockCard">
+            <soap:operation soapAction="http://standardbank.ao/mobilebanking/experience/1.0/blockOrUnblockCard"/>
+            <input><soap:body use="literal"/></input>
+            <output><soap:body use="literal"/></output>
+            <fault name="ExperienceFault"><soap:fault name="ExperienceFault" use="literal"/></fault>
+        </operation>
+
+    </binding>
+
+    <!-- =========================================================
+         SERVICE - endereço onde o serviço será exposto
+         (ajustar host/porta ao rodar no Anypoint Studio / CloudHub)
+         ========================================================= -->
+    <service name="BankingExperienceAPIService">
+        <port name="BankingExperiencePort" binding="tns:BankingExperienceSoapBinding">
+            <soap:address location="http://localhost:8081/services/banking-experience-api"/>
+        </port>
+    </service>
+
+</definitions>

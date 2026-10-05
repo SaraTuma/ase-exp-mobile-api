@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc"
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<sub-flow name="viewDashboard-impl" doc:id="29f26d07-2363-4748-a264-364e6ba02611" >
+		<set-variable value="#[%dw 2.0&#10;output application/java&#10;---&#10;payload.body.viewDashboardRequest.customerId]" doc:name="customerId" doc:id="5b988be2-7601-4a6d-823d-13b0a53dc32c" variableName="customerId"/>
+		<wsc:consume operation="getAccountOverview" doc:name="getAccountOverview" doc:id="c52a4808-17a3-4578-afd7-a00f373ea433" config-ref="Process_API_Config">
+			<wsc:message>
+				<wsc:body><![CDATA[#[%dw 2.0
+output application/xml
+ns proc http://example.com/banking/process
+---
+{
+  proc#getAccountOverviewRequest: {
+    proc#customerId: vars.customerId
+  }
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+		<flow-ref doc:name="check-process-fault" doc:id="a36a9b90-37cf-4a96-bf48-58567e631cf5" name="check-process-fault" />
+		<set-variable value="#[%dw 2.0&#10;output application/java&#10;---&#10;payload.body..*accountDetails default []]" doc:name="accounts" doc:id="2fe294ba-4706-45e7-88ce-87c94a6cc145" variableName="accounts" />
+		<set-variable value="#[%dw 2.0&#10;output application/java&#10;---&#10;payload.body.getAccountOverviewResponse.saldoTotalAgregado default 0]" doc:name="saldoTotalAgregado" doc:id="99170b1e-0427-451e-80e1-3fbaf4b79874" variableName="saldoTotalAgregado" />
+		<ee:transform doc:name="viewDashboard" doc:id="ef0de9d9-ca92-4586-85c6-b351db7c767e">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+
+---
+{
+  body: {
+    viewDashboardResponse: {
+     (vars.accounts map {
+        account: {
+          accountId:   $.accountId,
+          iban:        $.iban,
+          accountType: $.accountType,
+          currency:    $.currency,
+          balance:     $.balance
+        }
+      }),
+       aggregateBalance: vars.saldoTotalAgregado default 0
+    }
+  } write "application/xml"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="makeTransfer-impl" doc:id="47d1920b-e502-4707-8bd5-691d1405176f" >
+		<set-variable value="#[%dw 2.0&#10;output application/java&#10;ns mob http://standardbank.ao/mobilebanking/experience/1.0&#10;---&#10;payload.body.mob#makeTransferRequest]" doc:name="req" doc:id="80c2099d-443c-4d5e-ab2b-9e685ec6521c" variableName="req"/>
+		<wsc:consume operation="transferFunds" doc:name="transferFunds" doc:id="a8dff3ec-af25-4c9b-9301-e328276424f2" config-ref="Process_API_Config">
+			<wsc:message >
+				<wsc:body ><![CDATA[#[%dw 2.0
+output application/xml
+ns prc http://example.com/banking/process
+---
+{
+  prc#transferFundsRequest: {
+    prc#contaOrigem:  vars.req.sourceAccountId as Number,
+    prc#contaDestino: vars.req.destinationAccountId as Number,
+    prc#valor:        vars.req.amount as Number,
+    (prc#descricao:   vars.req.description) if (vars.req.description != null)
+  }
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+		<flow-ref doc:name="check-process-fault" doc:id="43171572-a03b-41af-94d1-55109e29dade" name="check-process-fault" />
+		<ee:transform doc:name="makeTransfer" doc:id="db7cd478-5fff-4a4b-8f99-28a782e11d71">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+
+var r     = payload.body.transferFundsResponse
+var st    = r.status as String
+var risco = r.riskFlag as String
+var valor = vars.req.amount as Number
+
+var texto = {
+  "CONFIRMADA": "Transferência de " ++ (valor as String {format: "#,##0.00"})
+             ++ " AOA processada com sucesso. Referência: "
+             ++ (r.transactionId default "-"),
+  "PENDENTE": "A sua transferência está em análise de segurança."
+}[st] default "Operação não concluída."
+
+var alerta =
+  if (st == "ALTO")
+    "Destinatário pouco ou nunca utilizado e valor elevado."
+  else if (risco == "MEDIO")
+    "TDestinatário já utilizado anteriormente. Valor dentro de um padrão razoável."
+  else
+    "Destinatário habitual. Transferência compatível com o seu histórico."
+---
+{
+  body: {
+    makeTransferResponse: {
+      status:     st,
+      message:    texto,
+      newBalance: r.novoSaldo as Number,
+      riskFlag:   risco,
+      (alertMessage: alerta) if (risco != "BAIXO" or st == "PENDENTE_REVISAO")
+    }
+  } write "application/xml"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="viewStatement-impl" doc:id="3b0655c4-dc89-4717-8230-435940fe1a84" >
+		<set-variable value="#[%dw 2.0&#10;output application/java&#10;---&#10;payload.body.viewStatementRequest]" doc:name="req" doc:id="f693020f-5b4a-44f9-969c-c02cc18670df" variableName="req" />
+		<wsc:consume operation="getEnrichedStatement" doc:name="getEnrichedStatement" doc:id="031aa2f5-52c8-48b0-9d0a-a11ea96d584d" config-ref="Process_API_Config">
+			<wsc:message >
+				<wsc:body ><![CDATA[#[%dw 2.0
+output application/xml
+ns prc http://example.com/banking/process
+---
+{
+  prc#getEnrichedStatementRequest: {
+    prc#accountId:  vars.req.accountId as String,
+    prc#dataInicio: vars.req.startDate as String,
+    prc#dataFim:    vars.req.endDate as String
+  }
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+		<flow-ref doc:name="check-process-fault" doc:id="4bafe493-06cf-41bf-b39b-db0e39df6c4c" name="check-process-fault"/>
+		<ee:transform doc:name="viewStatementResponse" doc:id="488d92c5-da40-480b-978b-3abfb2b3eccc">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+
+output application/java
+var movs  = (payload.body..*transactionDetails) default []
+var conta = vars.req.accountId as String
+
+fun ehDebito(m)  = (m.sourceAccount as String) == conta
+fun descricao(m) = if (isEmpty(m.description))
+                     ("Movimento " ++ (m.transactionId default ""))
+                   else (m.description as String)
+---
+{
+  body: {
+    viewStatementResponse: {
+	transactions:{
+		((movs orderBy ($.transactionDate as DateTime)) map (m) -> {
+        transaction: {
+          transactionId:   (m.transactionId as Number) default 0,
+          transactionDate: m.transactionDate as LocalDateTime,
+          description:     descricao(m),
+          category:        (m.category default "OUTROS"),
+          amount:          m.amount as Number,
+          destinationAccount: m.destinationAccount default "-",
+          "type":          if (ehDebito(m)) "DEBITO" else "CREDITO"
+        }
+      })
+	}
+      
+    }
+  } write "application/xml"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="viewSpendingInsights-impl" doc:id="8f01ac4f-0be0-41ae-8a7d-018970a8ff53" >
+		<set-variable value="#[%dw 2.0&#10;output application/java&#10;---&#10;payload.body.viewSpendingInsightsRequest.customerId]" doc:name="customerId" doc:id="8833101f-2d43-405a-b258-a48805f07a69" variableName="customerId" />
+		<wsc:consume operation="getSpendingInsights" doc:name="getSpendingInsights" doc:id="bde46e9c-3b4a-435d-b58c-391cb354bdc2" config-ref="Process_API_Config">
+			<wsc:message>
+				<wsc:body><![CDATA[#[%dw 2.0
+output application/xml
+ns prc http://example.com/banking/process
+---
+{
+  prc#getSpendingInsightsRequest: {
+    prc#customerId: vars.customerId
+  }
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+		<flow-ref doc:name="check-process-fault" doc:id="63640e01-ed55-43dd-a568-f1c6b8247550" name="check-process-fault" />
+		<ee:transform doc:name="viewSpendingInsights" doc:id="b101a991-ddc8-4485-ac89-a2291345de9c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+ns mob http://standardbank.ao/mobilebanking/experience/1.0
+var nomes = {
+  "transporte": "transporte", "taxi": "táxi", "alimentacao": "alimentação",
+  "pagamento": "pagamentos", "lazer": "lazer", "saude": "saúde",
+  "outros": "outros", "unknown": "categoria desconhecida"
+}
+
+var insights = (payload.body..*insight) default []
+var blocos   = (payload.body..*percentualVariacao default []) filter ($ is Object)
+
+fun kz(n)     = (((n default 0) as Number) as String {format: "#,##0.00"}) ++ " Kz"
+fun pct(n)    = abs((n default 0) as Number) as String {format: "0.#"}
+fun nome(k)   = nomes[k] default k
+fun codigo(k) = if (k == "unknown") "Categoria Desconhecida" else upper(k)
+
+var categorias = flatten(
+  blocos map ((pv) ->
+    pv pluck ((v, k) -> {
+      chave:      k as String,
+      atual:      (v.atual default 0) as Number,
+      anterior:   (v.anterior default 0) as Number,
+      // <percentual/> vazio chega como null ou "" — o isEmpty cobre os dois
+      percentual: if (isEmpty(v.percentual)) null else (v.percentual as Number)
+    })
+  )
+) orderBy -($.atual)
+
+fun mensagem(c) =
+  if (c.atual == 0 and c.anterior > 0)
+    "Não teve gastos em " ++ nome(c.chave) ++ " este mês (no mês passado: " ++ kz(c.anterior) ++ ")."
+  else if (c.percentual == null)
+    "Novo este mês: gastou " ++ kz(c.atual) ++ " em " ++ nome(c.chave) ++ "."
+  else if (c.percentual >= 200)
+    "Os seus gastos em " ++ nome(c.chave) ++ " subiram de " ++ kz(c.anterior) ++ " para " ++ kz(c.atual) ++ " este mês."
+  else if (c.percentual <= -99)
+    "Praticamente deixou de gastar em " ++ nome(c.chave) ++ " este mês."
+  else if (c.percentual < 0 )
+    "Boa notícia: gastou " ++ pct(c.percentual) ++ "% menos em " ++ nome(c.chave) ++ " face ao mês passado."
+  else if (c.percentual > 0)
+    "Gastou " ++ pct(c.percentual) ++ "% mais em " ++ nome(c.chave) ++ " do que no mês passado."
+  else if (c.percentual == 0)
+    "Gastou mais em " ++ nome(c.chave) ++ " do que no mês passado."
+  else
+    "Gastos em " ++ nome(c.chave) ++ " iguais aos do mês passado: " ++ kz(c.atual) ++ "."
+---
+{
+  body: {
+    mob#viewSpendingInsightsResponse: {
+       (
+       	insights map (i) -> {
+          title: i.categoria,
+          description:  i.mensagem default ""
+		}
+		),
+        insights:{
+	      (categorias map (c) -> {
+	        mob#insight: {
+	          category: upper(codigo(c.chave)),
+	          currentMonth: c.atual default "-",
+	          lastMonth: c.anterior default "-",
+	          message:  mensagem(c),
+	          (changePercentage: c.percentual) if (c.percentual != null)
+	        }
+	      })
+      }
+    }
+  } write "application/xml"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="blockOrUnblockCard-impl" doc:id="4e9b71ed-9d87-41cd-8efa-9ca0aaae70f4">
+		<set-variable value="#[%dw 2.0&#10;output application/java&#10;---&#10;payload.body.blockOrUnblockCardRequest]" doc:name="req" doc:id="134b5e31-03ec-413e-859f-3c012ffc7a10" variableName="req" />
+		<wsc:consume operation="manageCard" doc:name="manageCard" doc:id="9d7abebc-1a8f-45f4-8fc5-28104517006c" config-ref="Process_API_Config">
+			<wsc:message>
+				<wsc:body><![CDATA[#[%dw 2.0
+output application/xml
+ns prc http://example.com/banking/process
+---
+{
+  prc#manageCardRequest: {
+    prc#cardId:  vars.req.cardId,
+    prc#action: vars.req.action
+  }
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+		<flow-ref doc:name="check-process-fault" doc:id="53e1fae0-09f3-46e7-b516-503ce3a7d8fe" name="check-process-fault" />
+		<logger level="INFO" doc:name="Logger" doc:id="253fa567-46d3-464e-ab66-b275d0f1fa0d" message="#[payload.body..*percentualVariacao]"/>
+		<ee:transform doc:name="blockOrUnblockCard" doc:id="c196abfb-80db-497a-8c5e-e4dd728150af">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+ns mob http://standardbank.ao/mobilebanking/experience/1.0
+
+var req    = payload.body.manageCardResponse
+var cardId = req.cardId
+var accao  = req.status
+---
+{
+  body: {
+    mob#blockOrUnblockCardResponse: {
+      mob#cardId: cardId,
+      mob#status: accao,
+      mob#message:
+        if (accao == "BLOQUEADO")
+          "Cartao bloqueado. Pode desbloquea-lo a qualquer momento na app."
+        else if (accao == "CANCELADO")
+          "Cartao cancelado. Não pode utilizar na app."
+        else
+          "Cartao ativo e pronto a usar."
+    }
+  } write "application/xml"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="check-process-fault" doc:id="ce3f4ac5-92be-48f0-a5cd-5c2f3a4037ed">
+		<logger level="INFO" doc:name="Logger" doc:id="13f5278e-60ba-427d-a23e-feadb48a795f" message="#[payload]"/>
+		<choice doc:name="Fault disfarcado?" doc:id="1fc2dcde-03a1-4c8d-9131-7a9d41f96f63">
+			<when expression="#[!isEmpty(payload.body..*faultstring)]">
+				<set-variable value="#[(payload.body..*faultstring)[0] default 'Erro na Process API']" doc:name="faultProcess" doc:id="72c4c776-ff4c-4bc4-9f04-5283100a3f4c" variableName="faultProcess" />
+				<logger level="ERROR" doc:name="Logger" doc:id="03ee9804-711d-4a9e-bc37-2c9f03ad11c1" message="#['Process devolveu fault em envelope normal: ' ++ (vars.faultProcess as String)]" />
+				<raise-error doc:name="SOAP Error" doc:id="29d5f57d-1bfe-42d9-9564-3fb43e920354" type="EXPERIENCE:REQUISICAO_INVALIDA" description="#[vars.faultProcess]" />
+			</when>
+		</choice>
+	</sub-flow>
+</mule>

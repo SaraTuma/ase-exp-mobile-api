@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog/>
+  <types:enrichment select="#6ce35307-841e-4e1b-a0ed-318d81f660d8"/>
+  <types:enrichment select="#87dd3518-d8ed-44cf-bc7d-2b7ae00544ea"/>
+  <types:enrichment select="#a00c7d74-ca3e-4a19-a45e-5f54f4c70848"/>
+  <types:enrichment select="#3595cba9-f338-4a09-8644-3b4be7097815"/>
+</types:mule>
