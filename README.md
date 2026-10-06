@@ -3,7 +3,7 @@
 API da camada **Experience** (canal mobile) do projeto de Mobile & Internet Banking do Standard Bank Angola, desenvolvida em **MuleSoft** com protocolo **SOAP**.
 Denominada **ASE**.
 
-Esta API expõe as funcionalidades do app mobile, simplificando e formatando as respostas vindas da [Process API](../banking-process-api-soap) para consumo direto pela aplicação.
+Esta API expõe as funcionalidades do app mobile, simplificando e formatando as respostas vindas da [Process API](https://ase-process-api-soap-u0zc5p.5sc6y6-4.usa-e2.cloudhub.io/BankingProcessAPIService/BankingProcessPort?wsdl) para consumo direto pela aplicação.
 
 ```
 [App Mobile] → [Experience Mobile API] → [Process API] → [System API] → [PostgreSQL]
